@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Settings — Admin</title>
+  <link rel="stylesheet" href="../css/main.css">
+  <link rel="stylesheet" href="../css/admin.css">
+</head>
+<body>
+  <nav class="navbar">
+    <a class="navbar__brand" href="/admin/dashboard.html">Canteen Admin</a>
+    <div class="navbar__actions">
+      <span class="navbar__user" id="nav-user"></span>
+      <button class="btn btn--secondary btn--sm" onclick="clearSession()">Logout</button>
+    </div>
+  </nav>
+
+  <div class="admin-layout">
+    <nav class="admin-sidebar">
+      <div class="admin-sidebar__section">Management</div>
+      <ul class="admin-sidebar__nav" id="admin-nav">
+        <li><a href="/admin/dashboard.html">📊 Dashboard</a></li>
+        <li><a href="/admin/menus.html">📋 Menus</a></li>
+        <li><a href="/admin/items.html">🍛 Items</a></li>
+        <li><a href="/admin/orders.html">📦 Orders</a></li>
+        <li><a href="/admin/logs.html">📝 Status Logs</a></li>
+        <li><a href="/admin/settings.html" class="active">⚙️ Settings</a></li>
+      </ul>
+    </nav>
+
+    <div class="admin-content">
+      <h1 class="page-title">System Settings</h1>
+
+      <div class="card settings-card">
+        <div class="settings-row__label">Ordering Window</div>
+        <div class="settings-row__sub" style="margin-bottom:.85rem">Customers can only place orders within this time range</div>
+        <div style="display:grid;grid-template-columns:2.75rem 1fr;gap:.5rem .65rem;align-items:center">
+          <label style="font-size:.85rem;color:var(--color-muted)">From</label>
+          <input type="time" id="window-open" style="padding:.4rem .7rem;border:1px solid var(--color-border);border-radius:var(--radius)">
+          <label style="font-size:.85rem;color:var(--color-muted)">To</label>
+          <input type="time" id="window-close" style="padding:.4rem .7rem;border:1px solid var(--color-border);border-radius:var(--radius)">
+          <div></div>
+          <button class="btn btn--primary btn--sm" id="window-btn" onclick="saveWindow()" style="justify-self:start;margin-top:.25rem">Save</button>
+        </div>
+        <div id="current-window" class="text-muted text-sm" style="margin-top:.75rem"></div>
+      </div>
+
+      <h2 class="page-title" style="font-size:1.1rem;margin-top:2rem">Kitchen Accounts</h2>
+      <div class="card settings-card">
+        <form id="kitchen-form">
+          <div class="form-group">
+            <label for="k-schoolId">School / Staff ID</label>
+            <input type="text" id="k-schoolId" placeholder="e.g. K001" required>
+          </div>
+          <div class="form-group">
+            <label for="k-name">Full Name</label>
+            <input type="text" id="k-name" placeholder="e.g. Chef Rahman" required>
+          </div>
+          <div class="form-group">
+            <label for="k-password">Password</label>
+            <input type="password" id="k-password" placeholder="Min. 6 characters" minlength="6" required>
+          </div>
+          <button type="submit" class="btn btn--primary" id="kitchen-btn">Create Kitchen Account</button>
+        </form>
+      </div>
+
+      <div id="kitchen-accounts-section" style="margin-top:1rem">
+        <div id="kitchen-accounts-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/auth.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/utils.js"></script>
+  <script>
+    const session = guardPage('ADMIN');
+    document.getElementById('admin-nav').innerHTML = buildAdminSidebar('/admin/settings.html');
+    document.getElementById('nav-user').textContent = session.schoolId;
+
+    async function loadWindow() {
+      try {
+        const w = await api.getOrderWindow();
+        if (w.openTime)  document.getElementById('window-open').value  = w.openTime.substring(0, 5);
+        if (w.closeTime) document.getElementById('window-close').value = w.closeTime.substring(0, 5);
+        if (w.openTime && w.closeTime) {
+          document.getElementById('current-window').textContent =
+            `Current window: ${w.openTime.substring(0, 5)} – ${w.closeTime.substring(0, 5)}`;
+        }
+      } catch {}
+    }
+
+    async function saveWindow() {
+      const btn = document.getElementById('window-btn');
+      const open  = document.getElementById('window-open').value;
+      const close = document.getElementById('window-close').value;
+      if (!open || !close) { showToast('Set both From and To times', 'error'); return; }
+      if (open >= close)   { showToast('From time must be before To time', 'error'); return; }
+      setLoading(btn, true);
+      try {
+        await api.setOrderWindow(open + ':00', close + ':00');
+        showToast('Ordering window updated', 'success');
+        loadWindow();
+      } catch (err) {
+        showToast(err.message || 'Failed', 'error');
+      } finally {
+        setLoading(btn, false);
+      }
+    }
+
+    loadWindow();
+
+    async function loadKitchenAccounts() {
+      try {
+        const users = await api.getAllUsers();
+        const kitchen = (users || []).filter(u => u.role === 'KITCHEN');
+        const container = document.getElementById('kitchen-accounts-list');
+        if (kitchen.length === 0) {
+          container.innerHTML = '<p class="text-muted text-sm">No kitchen accounts yet.</p>';
+          return;
+        }
+        container.innerHTML = `
+          <table class="table" style="margin-top:.5rem">
+            <thead><tr><th>ID</th><th>Name</th><th>School/Staff ID</th><th></th></tr></thead>
+            <tbody>
+              ${kitchen.map(u => `
+                <tr>
+                  <td>${u.id}</td>
+                  <td>${u.name}</td>
+                  <td>${u.schoolId}</td>
+                  <td><button class="btn btn--secondary btn--sm" onclick="deleteKitchen(${u.id}, '${u.name}')">Delete</button></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>`;
+      } catch {}
+    }
+
+    async function deleteKitchen(id, name) {
+      if (!confirm(`Delete kitchen account "${name}"?`)) return;
+      try {
+        await api.deleteUser(id);
+        showToast('Kitchen account deleted', 'success');
+        loadKitchenAccounts();
+      } catch (err) {
+        showToast(err.message || 'Failed to delete', 'error');
+      }
+    }
+
+    loadKitchenAccounts();
+
+    document.getElementById('kitchen-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('kitchen-btn');
+      setLoading(btn, true);
+      try {
+        const res = await api.register({
+          schoolId: document.getElementById('k-schoolId').value.trim(),
+          name:     document.getElementById('k-name').value.trim(),
+          password: document.getElementById('k-password').value,
+          userType: 'STAFF',
+          role:     'KITCHEN',
+        });
+        if (res && res.success === false) throw new Error(res.message || 'Registration failed');
+        showToast('Kitchen account created', 'success');
+        document.getElementById('kitchen-form').reset();
+        loadKitchenAccounts();
+      } catch (err) {
+        showToast(err.message || 'Failed to create account', 'error');
+      } finally {
+        setLoading(btn, false);
+      }
+    });
+  </script>
+</body>
+</html>

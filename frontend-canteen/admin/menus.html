@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Menu Manager — Admin</title>
+  <link rel="stylesheet" href="../css/main.css">
+  <link rel="stylesheet" href="../css/admin.css">
+  <style>
+    #menu-search:focus {
+      outline: none;
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px rgba(232,87,58,.1);
+      background: #fff;
+    }
+    #menu-search::placeholder { color: #9ca3af; }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <a class="navbar__brand" href="/admin/dashboard.html">Canteen Admin</a>
+    <div class="navbar__actions">
+      <span class="navbar__user" id="nav-user"></span>
+      <button class="btn btn--secondary btn--sm" onclick="clearSession()">Logout</button>
+    </div>
+  </nav>
+
+  <div class="admin-layout">
+    <nav class="admin-sidebar">
+      <div class="admin-sidebar__section">Management</div>
+      <ul class="admin-sidebar__nav" id="admin-nav">
+        <li><a href="/admin/dashboard.html">📊 Dashboard</a></li>
+        <li><a href="/admin/menus.html" class="active">📋 Menus</a></li>
+        <li><a href="/admin/items.html">🍛 Items</a></li>
+        <li><a href="/admin/orders.html">📦 Orders</a></li>
+        <li><a href="/admin/logs.html">📝 Status Logs</a></li>
+        <li><a href="/admin/settings.html">⚙️ Settings</a></li>
+      </ul>
+    </nav>
+
+    <div class="admin-content">
+      <div class="page-header">
+        <h1 class="page-title" style="margin:0">Menus</h1>
+        <button class="btn btn--primary" onclick="openDrawer()">+ New Menu</button>
+      </div>
+
+      <div class="card">
+        <div style="padding:.75rem 1rem 1rem">
+          <div style="position:relative;width:100%;max-width:320px">
+            <span style="position:absolute;left:.85rem;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--color-muted);display:flex;align-items:center">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+            </span>
+            <input type="text" id="menu-search" placeholder="Search menus…" oninput="filterMenus()"
+              style="width:100%;padding:.5rem .9rem .5rem 2.35rem;border:1.5px solid var(--color-border);border-radius:999px;background:var(--color-bg);font-size:.84rem;color:var(--color-text);transition:border-color var(--transition),box-shadow var(--transition)">
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table id="menus-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="menus-body">
+              <tr><td colspan="4"><div class="spinner"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Side Drawer -->
+  <div class="side-drawer__overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
+  <aside class="side-drawer" id="form-drawer">
+    <div class="side-drawer__header">
+      <span class="side-drawer__title" id="drawer-title">New Menu</span>
+      <button class="side-drawer__close" onclick="closeDrawer()">✕</button>
+    </div>
+    <form id="menu-form">
+      <input type="hidden" id="edit-id">
+      <div class="form-group">
+        <label for="menu-name">Menu Name</label>
+        <input type="text" id="menu-name" required placeholder="e.g. Lunch Menu">
+      </div>
+      <div class="form-group">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <span>Active (visible to customers)</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="menu-active" checked>
+            <span class="toggle-switch__track"></span>
+            <span class="toggle-switch__thumb"></span>
+          </label>
+        </div>
+      </div>
+      <button type="submit" class="btn btn--primary btn--block" id="form-btn">Create Menu</button>
+    </form>
+  </aside>
+
+  <script src="../js/auth.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/utils.js"></script>
+  <script>
+    const session = guardPage(['ADMIN', 'KITCHEN']);
+    document.getElementById('admin-nav').innerHTML = buildAdminSidebar('/admin/menus.html');
+    document.getElementById('nav-user').textContent = session.schoolId;
+
+    let allMenus = [];
+
+    function filterMenus() {
+      const q = document.getElementById('menu-search').value.toLowerCase();
+      renderMenus(q ? allMenus.filter(m => (m.menuName || m.name).toLowerCase().includes(q)) : allMenus);
+    }
+
+    function renderMenus(menus) {
+      const tbody = document.getElementById('menus-body');
+      if (!menus.length) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No menus found</td></tr>';
+        return;
+      }
+      tbody.innerHTML = menus.map(m => {
+        const id = m.menuId || m.id;
+        const active = m.isActive !== false;
+        return `
+          <tr>
+            <td>${id}</td>
+            <td>${m.menuName || m.name}</td>
+            <td>${active
+              ? '<span class="badge badge--active">Active</span>'
+              : '<span class="badge badge--inactive">Inactive</span>'}</td>
+            <td>
+              <button class="btn btn--secondary btn--sm"
+                onclick="editMenu(${id}, '${(m.menuName || m.name).replace(/'/g,"\\'")}', ${active})">
+                Edit
+              </button>
+            </td>
+          </tr>`;
+      }).join('');
+    }
+
+    async function load() {
+      const tbody = document.getElementById('menus-body');
+      try {
+        const menus = await api.getMenus();
+        if (!menus || !menus.length) {
+          tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No menus yet</td></tr>';
+          return;
+        }
+        allMenus = menus;
+        filterMenus();
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="4" class="text-muted">${err.message}</td></tr>`;
+      }
+    }
+
+    function openDrawer() {
+      document.getElementById('drawer-title').textContent = 'New Menu';
+      document.getElementById('edit-id').value = '';
+      document.getElementById('menu-name').value = '';
+      document.getElementById('menu-active').checked = true;
+      document.getElementById('form-btn').textContent = 'Create Menu';
+      document.getElementById('form-drawer').classList.add('open');
+      document.getElementById('drawer-overlay').classList.add('open');
+    }
+    function editMenu(id, name, active) {
+      document.getElementById('drawer-title').textContent = 'Edit Menu';
+      document.getElementById('edit-id').value = id;
+      document.getElementById('menu-name').value = name;
+      document.getElementById('menu-active').checked = active;
+      document.getElementById('form-btn').textContent = 'Save Changes';
+      document.getElementById('form-drawer').classList.add('open');
+      document.getElementById('drawer-overlay').classList.add('open');
+    }
+    function closeDrawer() {
+      document.getElementById('form-drawer').classList.remove('open');
+      document.getElementById('drawer-overlay').classList.remove('open');
+    }
+
+    document.getElementById('menu-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('form-btn');
+      const id = document.getElementById('edit-id').value;
+      const data = {
+        name: document.getElementById('menu-name').value.trim(),
+        isActive: document.getElementById('menu-active').checked,
+      };
+      setLoading(btn, true);
+      try {
+        if (id) {
+          await api.updateMenu(id, { ...data, id: Number(id) });
+          showToast('Menu updated', 'success');
+        } else {
+          await api.createMenu(data);
+          showToast('Menu created', 'success');
+        }
+        closeDrawer();
+        load();
+      } catch (err) {
+        showToast(err.message || 'Failed', 'error');
+      } finally {
+        setLoading(btn, false);
+      }
+    });
+
+    load();
+  </script>
+</body>
+</html>

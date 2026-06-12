@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Order History — Canteen System</title>
+  <link rel="stylesheet" href="../css/main.css">
+  <link rel="stylesheet" href="../css/customer.css">
+</head>
+<body>
+  <nav class="navbar">
+    <a class="navbar__brand" href="/customer/menu.html">Campus Canteen</a>
+    <ul class="navbar__nav">
+      <li><a href="/customer/menu.html">Menu</a></li>
+      <li><a href="/customer/history.html" class="active">My Orders</a></li>
+      <li><a href="/customer/wallet.html">Wallet</a></li>
+      <li><a href="/customer/profile.html">Profile</a></li>
+    </ul>
+    <div class="navbar__actions">
+      <span class="navbar__user" id="nav-user"></span>
+      <button class="btn btn--secondary btn--sm" onclick="clearSession()">Logout</button>
+    </div>
+  </nav>
+
+  <main class="page" style="max-width:700px">
+    <h1 class="page-title">Order History</h1>
+    <div id="history-list">
+      <div class="spinner"></div>
+    </div>
+  </main>
+
+  <!-- Bottom navigation (mobile) -->
+  <nav class="bottom-nav">
+    <a href="/customer/menu.html" class="bottom-nav__item">
+      <span class="bottom-nav__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg></span>
+      <span>Menu</span>
+    </a>
+    <a href="/customer/history.html" class="bottom-nav__item active">
+      <span class="bottom-nav__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg></span>
+      <span>Orders</span>
+    </a>
+    <a href="/customer/wallet.html" class="bottom-nav__item">
+      <span class="bottom-nav__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M6 7V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2"/><circle cx="17" cy="13" r="1.25" fill="currentColor" stroke="none"/></svg></span>
+      <span>Wallet</span>
+    </a>
+    <a href="/customer/profile.html" class="bottom-nav__item">
+      <span class="bottom-nav__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></span>
+      <span>Profile</span>
+    </a>
+  </nav>
+
+  <script src="../js/auth.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/utils.js"></script>
+  <script>
+    const session = guardPage('CUSTOMER');
+    document.getElementById('nav-user').textContent = session.schoolId;
+
+    const STATUS_META = {
+      ORDERED:           { label: 'Ordered',          color: '#2563eb' },
+      PREPARING:         { label: 'Preparing',         color: '#d97706' },
+      READY_FOR_PICK_UP: { label: 'Ready for Pick-up', color: '#16a34a' },
+      PICKED_UP:         { label: 'Picked Up',         color: '#7c3aed' },
+      CANCELLED:         { label: 'Cancelled',         color: '#dc2626' },
+      REJECTED:          { label: 'Rejected',          color: '#dc2626' },
+      ABANDONED:         { label: 'Abandoned',         color: '#9ca3af' },
+    };
+    const ACTIVE = new Set(['ORDERED', 'PREPARING', 'READY_FOR_PICK_UP']);
+
+    function renderCard(o) {
+      const meta  = STATUS_META[o.orderStatus] || { label: o.orderStatus, color: '#9ca3af' };
+      const color = meta.color;
+      const items = (o.orderedItems || []);
+      const itemsHTML = items.length
+        ? items.map(i => `
+            <li class="order-card__item">
+              <span class="order-card__item-name">${i.name}</span>
+              <span class="order-card__item-qty">×${i.quantity}</span>
+            </li>`).join('')
+        : '<li class="order-card__item"><span class="order-card__item-name" style="color:var(--color-muted)">No items</span></li>';
+
+      const arrowLabel = ACTIVE.has(o.orderStatus) ? 'Track →' : 'View →';
+      const arrowClass = ACTIVE.has(o.orderStatus) ? 'btn btn--primary btn--sm' : 'btn btn--secondary btn--sm';
+
+      return `
+        <a href="/customer/tracking?orderId=${o.orderId}" class="order-card" style="border-left-color:${color};display:block;text-decoration:none;color:inherit;cursor:pointer">
+          <div class="order-card__head">
+            <div class="order-card__status">
+              <span class="order-card__dot" style="background:${color}"></span>
+              <span class="order-card__status-label" style="color:${color}">${meta.label}</span>
+            </div>
+            <div class="order-card__meta">
+              <span class="order-card__id">Order #${o.orderId}</span>
+              <span class="order-card__date">${formatDate(o.orderTime)}</span>
+            </div>
+          </div>
+          <div class="order-card__divider"></div>
+          <ul class="order-card__items">${itemsHTML}</ul>
+          ${o.remark ? `<div class="order-card__remark">Remarks: ${o.remark}</div>` : ''}
+          <div class="order-card__divider"></div>
+          <div class="order-card__foot">
+            <span class="order-card__total">${formatCurrency(o.totalAmount)}</span>
+            <span class="${arrowClass}">${arrowLabel}</span>
+          </div>
+        </a>`;
+    }
+
+    async function load() {
+      const container = document.getElementById('history-list');
+      try {
+        const orders = await api.getOrderHistory(session.id);
+        if (!orders || !orders.length) {
+          container.innerHTML = `
+            <div class="empty-state">
+              <div class="empty-state__icon">📋</div>
+              <div class="empty-state__title">No orders yet</div>
+              <a href="/customer/menu.html" class="btn btn--primary mt-2">Order Now</a>
+            </div>`;
+          return;
+        }
+        container.innerHTML = `<div class="order-list">
+          ${orders.slice().reverse().map(renderCard).join('')}
+        </div>`;
+      } catch (err) {
+        container.innerHTML =
+          `<div class="empty-state"><div class="empty-state__icon">⚠️</div><div class="empty-state__title">${err.message}</div></div>`;
+      }
+    }
+
+    load();
+  </script>
+</body>
+</html>

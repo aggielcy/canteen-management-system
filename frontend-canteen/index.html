@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Canteen System</title>
+  <script src="/js/auth.js"></script>
+  <script>
+    const session = getSession();
+    if (!session) {
+      location.replace('/login.html');
+    } else if (session.role === 'ADMIN') {
+      location.replace('/admin/menus.html');
+    } else {
+      location.replace('/customer/menu.html');
+    }
+  </script>
+</head>
+<body></body>
+</html>

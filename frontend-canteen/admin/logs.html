@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Status Logs — Admin</title>
+  <link rel="stylesheet" href="../css/main.css">
+  <link rel="stylesheet" href="../css/admin.css">
+</head>
+<body>
+  <nav class="navbar">
+    <a class="navbar__brand" href="/admin/dashboard.html">Canteen Admin</a>
+    <div class="navbar__actions">
+      <span class="navbar__user" id="nav-user"></span>
+      <button class="btn btn--secondary btn--sm" onclick="clearSession()">Logout</button>
+    </div>
+  </nav>
+
+  <div class="admin-layout">
+    <nav class="admin-sidebar">
+      <div class="admin-sidebar__section">Management</div>
+      <ul class="admin-sidebar__nav" id="admin-nav">
+        <li><a href="/admin/dashboard.html">📊 Dashboard</a></li>
+        <li><a href="/admin/menus.html">📋 Menus</a></li>
+        <li><a href="/admin/items.html">🍛 Items</a></li>
+        <li><a href="/admin/orders.html">📦 Orders</a></li>
+        <li><a href="/admin/logs.html" class="active">📝 Status Logs</a></li>
+        <li><a href="/admin/settings.html">⚙️ Settings</a></li>
+      </ul>
+    </nav>
+
+    <div class="admin-content">
+      <div class="page-header">
+        <h1 class="page-title" style="margin:0">Order Status Logs</h1>
+        <span id="log-count" class="text-muted" style="font-size:.85rem"></span>
+      </div>
+
+      <!-- Filter bar -->
+      <div class="card" style="margin-bottom:1rem">
+        <div style="display:flex;flex-wrap:wrap;gap:.75rem;align-items:flex-end">
+          <div class="form-group" style="margin:0;min-width:160px">
+            <label style="font-size:.78rem">Status</label>
+            <select id="filter-status" onchange="applyFilters()">
+              <option value="">All Statuses</option>
+              <option>ORDERED</option>
+              <option>PREPARING</option>
+              <option>READY_FOR_PICK_UP</option>
+              <option>PICKED_UP</option>
+              <option>CANCELLED</option>
+              <option>ABANDONED</option>
+              <option>REJECTED</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin:0;min-width:140px">
+            <label style="font-size:.78rem">Date</label>
+            <select id="filter-date" onchange="applyFilters()">
+              <option value="">All Time</option>
+              <option value="today">Today</option>
+              <option value="week">This Week</option>
+              <option value="month">This Month</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin:0;min-width:130px">
+            <label style="font-size:.78rem">Order ID</label>
+            <input type="number" id="filter-order-id" placeholder="e.g. 42" oninput="applyFilters()" min="1" style="width:100%">
+          </div>
+          <div class="form-group" style="margin:0;flex:1;min-width:160px">
+            <label style="font-size:.78rem">Customer</label>
+            <input type="text" id="filter-search" placeholder="Name or School ID" oninput="applyFilters()">
+          </div>
+          <button class="btn btn--secondary btn--sm" onclick="clearFilters()">Clear</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Log ID</th>
+                <th>Order ID</th>
+                <th>Customer</th>
+                <th>School / Staff ID</th>
+                <th>Status</th>
+                <th>Changed At</th>
+                <th>Changed By</th>
+              </tr>
+            </thead>
+            <tbody id="logs-body">
+              <tr><td colspan="7"><div class="spinner"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/auth.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/utils.js"></script>
+  <script>
+    const session = guardPage(['ADMIN', 'KITCHEN']);
+    document.getElementById('admin-nav').innerHTML = buildAdminSidebar('/admin/logs.html');
+    document.getElementById('nav-user').textContent = session.schoolId;
+
+    let allLogs = [];
+
+    const STATUS_CLASS = {
+      ORDERED: 'ordered', PREPARING: 'preparing',
+      READY_FOR_PICK_UP: 'ready', PICKED_UP: 'picked-up',
+      CANCELLED: 'cancelled', ABANDONED: 'abandoned', REJECTED: 'rejected',
+    };
+    const STATUS_LABEL = {
+      ORDERED: 'Ordered', PREPARING: 'Preparing',
+      READY_FOR_PICK_UP: 'Ready for Pick-up', PICKED_UP: 'Picked Up',
+      CANCELLED: 'Cancelled', ABANDONED: 'Abandoned', REJECTED: 'Rejected',
+    };
+
+    async function load() {
+      try {
+        allLogs = await api.getStatusLogs() || [];
+        applyFilters();
+      } catch (err) {
+        document.getElementById('logs-body').innerHTML =
+          `<tr><td colspan="7" class="text-muted text-center">${err.message}</td></tr>`;
+      }
+    }
+
+    function applyFilters() {
+      const status = document.getElementById('filter-status').value;
+      const dateRange = document.getElementById('filter-date').value;
+      const orderId = document.getElementById('filter-order-id').value.trim();
+      const search = document.getElementById('filter-search').value.toLowerCase().trim();
+
+      const now = new Date();
+      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const startOfWeek = new Date(startOfDay);
+      startOfWeek.setDate(startOfDay.getDate() - startOfDay.getDay());
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+      const filtered = allLogs.filter(log => {
+        if (status && log.status !== status) return false;
+        if (dateRange) {
+          const t = new Date(log.changedAt);
+          if (dateRange === 'today' && t < startOfDay) return false;
+          if (dateRange === 'week' && t < startOfWeek) return false;
+          if (dateRange === 'month' && t < startOfMonth) return false;
+        }
+        if (orderId && String(log.orderId) !== orderId) return false;
+        if (search) {
+          const haystack = `${log.customerName || ''} ${log.customerSchoolId || ''}`.toLowerCase();
+          if (!haystack.includes(search)) return false;
+        }
+        return true;
+      });
+
+      document.getElementById('log-count').textContent =
+        `${filtered.length} of ${allLogs.length} records`;
+      renderLogs(filtered);
+    }
+
+    function clearFilters() {
+      document.getElementById('filter-status').value = '';
+      document.getElementById('filter-date').value = '';
+      document.getElementById('filter-order-id').value = '';
+      document.getElementById('filter-search').value = '';
+      applyFilters();
+    }
+
+    function renderLogs(logs) {
+      const tbody = document.getElementById('logs-body');
+      if (!logs.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No records found</td></tr>';
+        return;
+      }
+      tbody.innerHTML = logs.map(log => {
+        const cls = STATUS_CLASS[log.status] || 'ordered';
+        const label = STATUS_LABEL[log.status] || log.status;
+        const changedBy = log.changedByName
+          ? `${log.changedByName}<br><span class="text-muted" style="font-size:.78rem;font-family:monospace">${log.changedBySchoolId || ''}</span>`
+          : '<span class="text-muted">System</span>';
+        return `
+          <tr>
+            <td class="text-muted" style="font-size:.82rem">#${log.logId}</td>
+            <td style="font-weight:600">#${log.orderId}</td>
+            <td>${log.customerName || '—'}</td>
+            <td style="font-family:monospace;font-size:.85rem">${log.customerSchoolId || '—'}</td>
+            <td><span class="badge badge--${cls}">${label}</span></td>
+            <td style="font-size:.85rem;white-space:nowrap">${formatDate(log.changedAt)}</td>
+            <td style="font-size:.85rem">${changedBy}</td>
+          </tr>`;
+      }).join('');
+    }
+
+    load();
+  </script>
+</body>
+</html>

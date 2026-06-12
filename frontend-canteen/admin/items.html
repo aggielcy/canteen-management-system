@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Item Manager — Admin</title>
+  <link rel="stylesheet" href="../css/main.css">
+  <link rel="stylesheet" href="../css/admin.css">
+  <style>
+    #item-search:focus {
+      outline: none;
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px rgba(232,87,58,.1);
+      background: #fff;
+    }
+    #item-search::placeholder { color: #9ca3af; }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <a class="navbar__brand" href="/admin/dashboard.html">Canteen Admin</a>
+    <div class="navbar__actions">
+      <span class="navbar__user" id="nav-user"></span>
+      <button class="btn btn--secondary btn--sm" onclick="clearSession()">Logout</button>
+    </div>
+  </nav>
+
+  <div class="admin-layout">
+    <nav class="admin-sidebar">
+      <div class="admin-sidebar__section">Management</div>
+      <ul class="admin-sidebar__nav" id="admin-nav">
+        <li><a href="/admin/dashboard.html">📊 Dashboard</a></li>
+        <li><a href="/admin/menus.html">📋 Menus</a></li>
+        <li><a href="/admin/items.html" class="active">🍛 Items</a></li>
+        <li><a href="/admin/orders.html">📦 Orders</a></li>
+        <li><a href="/admin/logs.html">📝 Status Logs</a></li>
+        <li><a href="/admin/settings.html">⚙️ Settings</a></li>
+      </ul>
+    </nav>
+
+    <div class="admin-content">
+      <div class="page-header">
+        <h1 class="page-title" style="margin:0">Items</h1>
+        <button class="btn btn--primary" onclick="openDrawer()">+ New Item</button>
+      </div>
+
+      <div class="card">
+        <div style="padding:.75rem 1rem 1rem">
+          <div style="position:relative;width:100%;max-width:320px">
+            <span style="position:absolute;left:.85rem;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--color-muted);display:flex;align-items:center">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+            </span>
+            <input type="text" id="item-search" placeholder="Search items…" oninput="filterItems()"
+              style="width:100%;padding:.5rem .9rem .5rem 2.35rem;border:1.5px solid var(--color-border);border-radius:999px;background:var(--color-bg);font-size:.84rem;color:var(--color-text);transition:border-color var(--transition),box-shadow var(--transition)">
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Price</th>
+                <th>Qty</th>
+                <th>Visible</th>
+                <th>Menus</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="items-body">
+              <tr><td colspan="6"><div class="spinner"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Side Drawer -->
+  <div class="side-drawer__overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
+  <aside class="side-drawer" id="form-drawer">
+    <div class="side-drawer__header">
+      <span class="side-drawer__title" id="drawer-title">New Item</span>
+      <button class="side-drawer__close" onclick="closeDrawer()">✕</button>
+    </div>
+    <form id="item-form">
+      <input type="hidden" id="edit-id">
+      <div class="form-group">
+        <label for="item-name">Item Name</label>
+        <input type="text" id="item-name" required placeholder="e.g. Nasi Lemak">
+      </div>
+      <div class="form-group">
+        <label for="item-desc">Description</label>
+        <textarea id="item-desc" placeholder="Short description…"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="item-price">Price (HKD)</label>
+        <input type="number" id="item-price" min="0" step="0.01" required placeholder="0.00">
+      </div>
+      <div class="form-group">
+        <label for="item-img">Image URL (optional)</label>
+        <input type="url" id="item-img" placeholder="https://…">
+      </div>
+      <div class="form-group">
+        <label for="item-qty">Stock Quantity</label>
+        <input type="number" id="item-qty" min="0" step="1" placeholder="Leave blank for unlimited">
+      </div>
+      <div class="form-group">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <span>Visible to customers</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="item-visible" checked>
+            <span class="toggle-switch__track"></span>
+            <span class="toggle-switch__thumb"></span>
+          </label>
+        </div>
+      </div>
+
+      <hr class="divider">
+      <div class="form-group">
+        <label>Link to Menu</label>
+        <input type="text" id="menu-search" placeholder="Search menus…" oninput="filterMenuSelect()" style="margin-bottom:.35rem">
+        <div style="display:flex;gap:.5rem">
+          <select id="menu-link" style="flex:1"></select>
+          <button type="button" class="btn btn--secondary btn--sm" id="link-menu-btn" onclick="linkMenu()">+ Link</button>
+        </div>
+        <div class="tag-list" id="linked-menus" style="margin-top:.5rem"></div>
+        <div id="menu-link-hint" class="form-hint" style="margin-top:.35rem"></div>
+      </div>
+
+      <button type="submit" class="btn btn--primary btn--block" id="form-btn">Create Item</button>
+    </form>
+  </aside>
+
+  <script src="../js/auth.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/utils.js"></script>
+  <script>
+    const session = guardPage(['ADMIN', 'KITCHEN']);
+    document.getElementById('admin-nav').innerHTML = buildAdminSidebar('/admin/items.html');
+    document.getElementById('nav-user').textContent = session.schoolId;
+
+    let allMenus = [];
+    let allItems = [];
+
+    async function load() {
+      try {
+        [allMenus] = await Promise.all([api.getMenus()]);
+        allMenus = allMenus || [];
+        allItems = await api.getItems() || [];
+        filterItems();
+      } catch (err) {
+        document.getElementById('items-body').innerHTML =
+          `<tr><td colspan="6" class="text-muted">${err.message}</td></tr>`;
+      }
+    }
+
+    function filterItems() {
+      const q = document.getElementById('item-search').value.toLowerCase();
+      renderItems(q ? allItems.filter(i => i.name.toLowerCase().includes(q)) : allItems);
+    }
+
+    function populateMenuSection(linkedMenuNames) {
+      const isNewItem = !document.getElementById('edit-id').value;
+      document.getElementById('menu-search').value = '';
+      document.getElementById('menu-link-hint').textContent =
+        isNewItem ? 'Save the item first before linking to a menu.' : '';
+      document.getElementById('link-menu-btn').disabled = isNewItem;
+      document.getElementById('menu-link').disabled = isNewItem;
+      document.getElementById('menu-search').disabled = isNewItem;
+      renderMenuSelect(allMenus);
+      renderLinkedTags(linkedMenuNames);
+    }
+
+    function renderMenuSelect(menus) {
+      const sel = document.getElementById('menu-link');
+      sel.innerHTML = menus.length
+        ? menus.map(m => `<option value="${m.menuId || m.id}">${m.menuName || m.name}</option>`).join('')
+        : '<option value="" disabled>No menus found</option>';
+    }
+
+    function filterMenuSelect() {
+      const q = document.getElementById('menu-search').value.toLowerCase();
+      renderMenuSelect(allMenus.filter(m => (m.menuName || m.name).toLowerCase().includes(q)));
+    }
+
+    function renderLinkedTags(linkedMenuNames) {
+      const itemId = document.getElementById('edit-id').value;
+      const container = document.getElementById('linked-menus');
+      if (!linkedMenuNames.length) {
+        container.innerHTML = '<span style="font-size:.8rem;color:var(--color-muted)">Not linked to any menu</span>';
+        return;
+      }
+      container.innerHTML = linkedMenuNames.map(menuName => {
+        const menuObj = allMenus.find(m => (m.menuName || m.name) === menuName);
+        const menuId = menuObj ? (menuObj.menuId || menuObj.id) : null;
+        return `<span class="tag" data-menu-id="${menuId}">
+          ${menuName}
+          ${menuId && itemId ? `<button type="button" class="tag__remove" title="Remove from ${menuName}"
+            onclick="unlinkMenu(${menuId})">✕</button>` : ''}
+        </span>`;
+      }).join('');
+    }
+
+    function renderItems(items) {
+      const tbody = document.getElementById('items-body');
+      if (!items.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No items yet</td></tr>';
+        return;
+      }
+      tbody.innerHTML = items.map(i => {
+        const id = i.itemId || i.id;
+        const qty = i.quantity == null ? '∞' : i.quantity;
+        const qtyBadge = i.quantity === 0
+          ? '<span class="badge badge--inactive">Out of Stock</span>'
+          : `<span>${qty}</span>`;
+        return `
+          <tr>
+            <td>${i.name}</td>
+            <td>${formatCurrency(i.price)}</td>
+            <td>${qtyBadge}</td>
+            <td>${i.isVisible !== false
+              ? '<span class="badge badge--active">Yes</span>'
+              : '<span class="badge badge--inactive">No</span>'}</td>
+            <td>${(i.menus || []).map(m => m.name || m).join(', ') || '—'}</td>
+            <td>
+              <button class="btn btn--secondary btn--sm"
+                onclick="editItem(${id}, ${JSON.stringify(i).replace(/"/g,'&quot;')})">
+                Edit
+              </button>
+            </td>
+          </tr>`;
+      }).join('');
+    }
+
+    function openDrawer() {
+      document.getElementById('drawer-title').textContent = 'New Item';
+      document.getElementById('edit-id').value = '';
+      document.getElementById('item-name').value = '';
+      document.getElementById('item-desc').value = '';
+      document.getElementById('item-price').value = '';
+      document.getElementById('item-img').value = '';
+      document.getElementById('item-qty').value = '';
+      document.getElementById('item-visible').checked = true;
+      populateMenuSection([]);
+      document.getElementById('form-btn').textContent = 'Create Item';
+      document.getElementById('form-drawer').classList.add('open');
+      document.getElementById('drawer-overlay').classList.add('open');
+    }
+
+    function editItem(id, item) {
+      document.getElementById('drawer-title').textContent = 'Edit Item';
+      document.getElementById('edit-id').value = id;
+      document.getElementById('item-name').value = item.name;
+      document.getElementById('item-desc').value = item.description || '';
+      document.getElementById('item-price').value = item.price;
+      document.getElementById('item-img').value = item.imageUrl || '';
+      document.getElementById('item-qty').value = item.quantity != null ? item.quantity : '';
+      document.getElementById('item-visible').checked = item.isVisible !== false;
+      document.getElementById('form-btn').textContent = 'Save Changes';
+      populateMenuSection((item.menus || []).map(m => m.name || m));
+      document.getElementById('form-drawer').classList.add('open');
+      document.getElementById('drawer-overlay').classList.add('open');
+    }
+    function closeDrawer() {
+      document.getElementById('form-drawer').classList.remove('open');
+      document.getElementById('drawer-overlay').classList.remove('open');
+    }
+
+    function getLinkedMenuNames(itemId) {
+      const id = Number(itemId);
+      const names = [];
+      allMenus.forEach(m => {
+        if ((m.items || []).some(i => (i.itemId || i.id) === id)) {
+          names.push(m.menuName || m.name);
+        }
+      });
+      return names;
+    }
+
+    async function linkMenu() {
+      const itemId = document.getElementById('edit-id').value;
+      if (!itemId) { showToast('Save the item first', 'error'); return; }
+      const menuId = document.getElementById('menu-link').value;
+      if (!menuId) { showToast('No menu selected', 'error'); return; }
+      const btn = document.getElementById('link-menu-btn');
+      setLoading(btn, true);
+      try {
+        await api.linkMenuItem(menuId, itemId);
+        showToast('Linked to menu', 'success');
+        await load();
+        renderLinkedTags(getLinkedMenuNames(itemId));
+      } catch (err) {
+        showToast(err.message || 'Failed to link', 'error');
+      } finally {
+        setLoading(btn, false);
+      }
+    }
+
+    async function unlinkMenu(menuId) {
+      const itemId = document.getElementById('edit-id').value;
+      if (!itemId) return;
+      // Optimistic: remove the tag immediately so it feels instant
+      const tag = document.querySelector(`#linked-menus .tag[data-menu-id="${menuId}"]`);
+      if (tag) tag.remove();
+      if (!document.querySelectorAll('#linked-menus .tag').length) {
+        document.getElementById('linked-menus').innerHTML =
+          '<span style="font-size:.8rem;color:var(--color-muted)">Not linked to any menu</span>';
+      }
+      try {
+        await api.unlinkMenuItem(menuId, itemId);
+        load(); // refresh table in background
+      } catch (err) {
+        showToast(err.message || 'Failed to remove', 'error');
+        // Rollback: re-render tags from current allMenus
+        renderLinkedTags(getLinkedMenuNames(itemId));
+      }
+    }
+
+    document.getElementById('item-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('form-btn');
+      const id = document.getElementById('edit-id').value;
+      const qtyRaw = document.getElementById('item-qty').value.trim();
+      const data = {
+        name: document.getElementById('item-name').value.trim(),
+        description: document.getElementById('item-desc').value.trim(),
+        price: parseFloat(document.getElementById('item-price').value),
+        imageUrl: document.getElementById('item-img').value.trim() || null,
+        isVisible: document.getElementById('item-visible').checked,
+        quantity: qtyRaw !== '' ? parseInt(qtyRaw, 10) : null,
+      };
+      setLoading(btn, true);
+      try {
+        if (id) {
+          await api.updateItem(id, data);
+          showToast('Item updated', 'success');
+        } else {
+          await api.createItem(data);
+          showToast('Item created', 'success');
+        }
+        closeDrawer();
+        load();
+      } catch (err) {
+        showToast(err.message || 'Failed', 'error');
+      } finally {
+        setLoading(btn, false);
+      }
+    });
+
+    load();
+  </script>
+</body>
+</html>

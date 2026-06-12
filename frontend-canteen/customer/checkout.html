@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Checkout — Canteen System</title>
+  <link rel="stylesheet" href="../css/main.css">
+  <link rel="stylesheet" href="../css/customer.css">
+</head>
+<body>
+  <nav class="navbar">
+    <a class="navbar__brand" href="/customer/menu.html">Campus Canteen</a>
+    <ul class="navbar__nav">
+      <li><a href="/customer/menu.html">Menu</a></li>
+      <li><a href="/customer/history.html">Orders</a></li>
+      <li><a href="/customer/wallet.html">Wallet</a></li>
+      <li><a href="/customer/profile.html">Profile</a></li>
+    </ul>
+    <div class="navbar__actions">
+      <span class="navbar__user" id="nav-user"></span>
+      <button class="btn btn--secondary btn--sm" onclick="clearSession()">Logout</button>
+    </div>
+  </nav>
+
+  <main class="page">
+    <div class="page-header">
+      <h1 class="page-title" style="margin:0">Checkout</h1>
+      <a href="/customer/menu.html" class="btn btn--secondary btn--sm">← Back to Menu</a>
+    </div>
+
+    <div id="empty-cart" class="empty-state hidden">
+      <div class="empty-state__icon">🛒</div>
+      <div class="empty-state__title">Your cart is empty</div>
+      <a href="/customer/menu.html" class="btn btn--primary mt-2">Browse Menu</a>
+    </div>
+
+    <div id="checkout-content" class="checkout-layout hidden">
+      <!-- Order summary -->
+      <div class="card">
+        <h2 class="font-bold mb-2" style="font-size:1rem">Order Summary</h2>
+        <div id="order-items"></div>
+        <div class="checkout-total">
+          <span>Total</span>
+          <span id="order-total"></span>
+        </div>
+        <div class="form-group mt-2">
+          <label for="remark">Special Instructions (optional)</label>
+          <textarea id="remark" placeholder="e.g. no chilli, extra rice…"></textarea>
+        </div>
+      </div>
+
+      <!-- Payment -->
+      <div>
+        <div class="card mb-2">
+          <h2 class="font-bold mb-2" style="font-size:1rem">Payment Method</h2>
+          <div class="payment-options">
+            <label class="payment-option">
+              <input type="radio" name="payment" value="WALLET" checked onchange="onPaymentChange()">
+              <div>
+                <div class="font-bold">Wallet</div>
+                <div class="text-sm text-muted">Balance: <span id="wallet-balance">loading…</span></div>
+              </div>
+            </label>
+            <label class="payment-option">
+              <input type="radio" name="payment" value="CASH" onchange="onPaymentChange()">
+              <div>
+                <div class="font-bold">Cash</div>
+                <div class="text-sm text-muted">Pay at counter on pickup</div>
+              </div>
+            </label>
+          </div>
+          <div id="wallet-warning" class="alert alert--error hidden mt-1" style="margin-bottom:0">
+            Insufficient wallet balance. Please top up or pay by cash.
+          </div>
+        </div>
+
+        <button class="btn btn--primary btn--block btn--lg" id="place-btn" onclick="placeOrder()">
+          Place Order
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <script src="../js/auth.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/utils.js"></script>
+  <script>
+    const session = guardPage('CUSTOMER');
+    document.getElementById('nav-user').textContent = session.schoolId;
+
+    let walletBalance = null;
+
+    function init() {
+      const items = cartStore.get();
+      if (!items.length) {
+        document.getElementById('empty-cart').classList.remove('hidden');
+        return;
+      }
+      document.getElementById('checkout-content').classList.remove('hidden');
+
+      document.getElementById('order-items').innerHTML = items.map(i => `
+        <div class="checkout-summary-item">
+          <span>${i.name} × ${i.quantity}</span>
+          <span>${formatCurrency(i.price * i.quantity)}</span>
+        </div>`).join('');
+      document.getElementById('order-total').textContent = formatCurrency(cartStore.total());
+
+      loadWallet();
+    }
+
+    async function loadWallet() {
+      try {
+        const w = await api.getWallet(session.id);
+        walletBalance = parseFloat(w.balance);
+        document.getElementById('wallet-balance').textContent = formatCurrency(walletBalance);
+        onPaymentChange();
+      } catch {
+        document.getElementById('wallet-balance').textContent = 'unavailable';
+        walletBalance = null;
+      }
+    }
+
+    function onPaymentChange() {
+      const method = document.querySelector('input[name="payment"]:checked')?.value;
+      const total = cartStore.total();
+      const warning = document.getElementById('wallet-warning');
+      const placeBtn = document.getElementById('place-btn');
+
+      if (method === 'WALLET' && walletBalance !== null && walletBalance < total) {
+        warning.classList.remove('hidden');
+        placeBtn.disabled = true;
+      } else {
+        warning.classList.add('hidden');
+        placeBtn.disabled = false;
+      }
+    }
+
+    async function placeOrder() {
+      const btn = document.getElementById('place-btn');
+      const items = cartStore.get();
+      const paymentMethod = document.querySelector('input[name="payment"]:checked').value;
+      const remark = document.getElementById('remark').value.trim();
+
+      const orderData = {
+        totalAmount: cartStore.total(),
+        paymentMethod,
+        remark,
+        items,
+      };
+
+      setLoading(btn, true);
+      try {
+        const res = await api.placeOrder(session.id, orderData);
+        cartStore.clear();
+        showToast('Order placed!', 'success');
+        setTimeout(() => location.replace(`/customer/tracking?orderId=${res.orderId}`), 800);
+      } catch (err) {
+        showToast(err.message || 'Failed to place order', 'error');
+        setLoading(btn, false);
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>

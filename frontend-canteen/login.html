@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign In — Campus Canteen</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="/css/auth.css">
+</head>
+<body class="auth-page">
+
+  <!-- Brand panel (desktop left side) -->
+  <div class="auth-brand-panel">
+    <h1 class="auth-brand__name">Campus Canteen</h1>
+    <p class="auth-brand__tag">Your everyday campus dining,<br>made fast and simple.</p>
+  </div>
+
+  <!-- Form panel -->
+  <div class="auth-form-panel">
+    <div class="auth-card">
+      <div class="auth-card__logo">
+        <div class="auth-card__logo-title">Campus Canteen</div>
+        <div class="auth-card__logo-sub">Online Ordering</div>
+      </div>
+
+      <h1 class="auth-card__title">Sign in</h1>
+
+      <div id="error-msg" class="alert alert--error hidden"></div>
+
+      <form id="login-form">
+        <div class="form-group">
+          <label for="schoolId">School / Staff ID</label>
+          <input type="text" id="schoolId" name="schoolId" placeholder="e.g. S12345"
+                 autocomplete="username" required>
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password"
+                 autocomplete="current-password" required>
+        </div>
+        <button type="submit" class="btn btn--primary btn--block btn--lg" id="submit-btn">
+          Sign in
+        </button>
+      </form>
+
+      <p class="auth-card__footer">
+        Don't have an account? <a href="/register.html">Register</a>
+      </p>
+    </div>
+  </div>
+
+  <script src="/js/auth.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/utils.js"></script>
+  <script>
+    if (getSession()) {
+      const s = getSession();
+      location.replace(s.role === 'ADMIN' ? '/admin/dashboard.html'
+        : s.role === 'KITCHEN' ? '/admin/orders.html'
+        : '/customer/menu.html');
+    }
+
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('submit-btn');
+      const errorEl = document.getElementById('error-msg');
+      errorEl.classList.add('hidden');
+
+      const schoolId = document.getElementById('schoolId').value.trim();
+      const password = document.getElementById('password').value;
+
+      setLoading(btn, true);
+      try {
+        const res = await api.login(schoolId, password);
+        if (!res || !res.success) throw new Error(res?.message || 'Invalid credentials');
+        saveSession(res, password);
+        location.replace(res.role === 'ADMIN' ? '/admin/dashboard.html'
+          : res.role === 'KITCHEN' ? '/admin/orders.html'
+          : '/customer/menu.html');
+      } catch (err) {
+        errorEl.textContent = err.message || 'Login failed. Check your credentials.';
+        errorEl.classList.remove('hidden');
+        setLoading(btn, false);
+      }
+    });
+  </script>
+</body>
+</html>

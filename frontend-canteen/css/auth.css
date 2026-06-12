@@ -1,0 +1,106 @@
+/* ── Auth page — split layout ───────────────────────────────────────────── */
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  background: #fdf8f6;
+}
+
+/* Brand panel — desktop only */
+.auth-brand-panel {
+  display: none;
+  background: var(--color-text);
+  color: #fff;
+  padding: 3.5rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.auth-brand__icon {
+  font-size: 3.25rem; margin-bottom: 1.25rem; display: block;
+}
+.auth-brand__name {
+  font-size: 2.5rem; font-weight: 800;
+  letter-spacing: -.05em; margin-bottom: .75rem;
+}
+.auth-brand__tag {
+  font-size: 1.05rem; line-height: 1.75;
+  color: rgba(255,255,255,.65);
+}
+
+/* Form panel */
+.auth-form-panel {
+  display: flex; align-items: center; justify-content: center;
+  padding: 2.5rem 1.5rem;
+}
+
+@media (min-width: 800px) {
+  .auth-page {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    background: #fff;
+  }
+  .auth-brand-panel { display: flex; max-width: none; }
+  .auth-form-panel  { background: #fdf8f6; min-width: 360px; }
+}
+
+/* ── Auth card ──────────────────────────────────────────────────────────── */
+.auth-card {
+  background: #fff;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-border);
+  padding: 2.25rem;
+  width: 100%; max-width: 400px;
+}
+
+.auth-card__logo {
+  text-align: center; margin-bottom: 1.75rem;
+}
+.auth-card__logo-icon {
+  font-size: 2.25rem; display: block; margin-bottom: .5rem;
+}
+.auth-card__logo-title {
+  font-size: 1.25rem; font-weight: 800;
+  letter-spacing: -.04em; color: var(--color-text);
+}
+.auth-card__logo-sub {
+  font-size: .8rem; color: var(--color-muted);
+  margin-top: .2rem; font-weight: 500;
+}
+.auth-card__title {
+  font-size: 1.2rem; font-weight: 700;
+  letter-spacing: -.03em; margin-bottom: 1.5rem;
+}
+.auth-card__footer {
+  text-align: center; margin-top: 1.5rem;
+  font-size: .85rem; color: var(--color-muted);
+}
+.auth-card__footer a { font-weight: 600; }
+
+/* ── Radio group (account type) ─────────────────────────────────────────── */
+.radio-group { display: flex; gap: .75rem; }
+.radio-group label {
+  flex: 1;
+  display: flex; align-items: center; justify-content: center; gap: .4rem;
+  padding: .6rem;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: .875rem; font-weight: 600;
+  transition: border-color var(--transition), background var(--transition);
+}
+.radio-group input[type="radio"] { position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none; }
+.radio-group label:has(input:checked) {
+  border-color: var(--color-primary);
+  background: var(--color-primary-t);
+  color: var(--color-primary);
+}
+
+/* ── Alert ──────────────────────────────────────────────────────────────── */
+.alert {
+  padding: .7rem 1rem;
+  border-radius: var(--radius);
+  font-size: .875rem; font-weight: 500; margin-bottom: 1rem;
+}
+.alert--error   { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+.alert--success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }

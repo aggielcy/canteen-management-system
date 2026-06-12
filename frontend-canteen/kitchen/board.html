@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kitchen Board — Canteen System</title>
+  <link rel="stylesheet" href="../css/main.css">
+  <link rel="stylesheet" href="../css/kitchen.css">
+</head>
+<body>
+  <nav class="navbar">
+    <a class="navbar__brand" href="/kitchen/board.html">🍽️ Kitchen</a>
+    <div class="navbar__actions">
+      <span class="navbar__user" id="nav-user"></span>
+      <button class="btn btn--secondary btn--sm" onclick="clearSession()">Logout</button>
+    </div>
+  </nav>
+
+  <main class="page page--wide">
+    <div class="kitchen-header">
+      <h1 class="kitchen-header__title">Kitchen Board</h1>
+      <span class="kitchen-header__refresh" id="refresh-label">Auto-refreshing…</span>
+    </div>
+
+    <div class="kitchen-board">
+      <div class="kanban-col kanban-col--ordered">
+        <div class="kanban-col__header">
+          
+          <span class="kanban-col__title">New Orders</span>
+          <span class="kanban-col__count" id="count-ordered">0</span>
+        </div>
+        <div class="kanban-cards" id="col-ordered"></div>
+      </div>
+
+      <div class="kanban-col kanban-col--preparing">
+        <div class="kanban-col__header">
+          <span class="kanban-col__title">Preparing</span>
+          <span class="kanban-col__count" id="count-preparing">0</span>
+        </div>
+        <div class="kanban-cards" id="col-preparing"></div>
+      </div>
+
+      <div class="kanban-col kanban-col--ready">
+        <div class="kanban-col__header">
+          <span class="kanban-col__title">Ready for Pick-up</span>
+          <span class="kanban-col__count" id="count-ready">0</span>
+        </div>
+        <div class="kanban-cards" id="col-ready"></div>
+      </div>
+    </div>
+  </main>
+
+  <script src="../js/auth.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/utils.js"></script>
+  <script>
+    const session = guardPage(['ADMIN', 'KITCHEN']);
+    document.getElementById('nav-user').textContent = session.schoolId;
+
+    function cardHTML(order) {
+      const id = order.order_Id;
+      const status = order.liveStatus;
+      const cls = status.toLowerCase().replace('ready_for_pick_up', 'ready');
+
+      let actionBtn = '';
+      if (status === 'ORDERED') {
+        actionBtn = `<button class="btn btn--primary btn--sm btn--block" onclick="advance(${id},'prepare')">Start Preparing</button>`;
+      } else if (status === 'PREPARING') {
+        actionBtn = `<button class="btn btn--success btn--sm btn--block" onclick="advance(${id},'ready')">Mark Ready</button>`;
+      } else if (status === 'READY_FOR_PICK_UP') {
+        actionBtn = `<button class="btn btn--secondary btn--sm btn--block" onclick="advance(${id},'complete')">Mark Picked Up</button>`;
+      }
+
+      return `
+        <div class="kanban-card kanban-card--${cls}">
+          <div class="kanban-card__header">
+            <span class="kanban-card__id">Order #${id}</span>
+          </div>
+          <div class="kanban-card__customer">${order.name || 'Customer'}</div>
+          ${actionBtn}
+        </div>`;
+    }
+
+    async function load() {
+      try {
+        const orders = await api.getKitchenOrders();
+        const byStatus = { ORDERED: [], PREPARING: [], READY_FOR_PICK_UP: [] };
+        (orders || []).forEach(o => {
+          if (byStatus[o.liveStatus]) byStatus[o.liveStatus].push(o);
+        });
+
+        renderCol('ordered', byStatus.ORDERED);
+        renderCol('preparing', byStatus.PREPARING);
+        renderCol('ready', byStatus.READY_FOR_PICK_UP);
+
+        const now = new Date().toLocaleTimeString('en-MY');
+        document.getElementById('refresh-label').textContent = `Last updated: ${now}`;
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    function renderCol(colId, items) {
+      document.getElementById(`col-${colId}`).innerHTML = items.length
+        ? items.map(cardHTML).join('')
+        : '<div class="text-muted text-sm text-center" style="padding:.75rem">No orders</div>';
+      document.getElementById(`count-${colId}`).textContent = items.length;
+    }
+
+    async function advance(orderId, action) {
+      try {
+        if (action === 'prepare')       await api.prepareOrder(orderId, session.id);
+        else if (action === 'ready')    await api.markReady(orderId, session.id);
+        else if (action === 'complete') await api.completeOrder(orderId, session.id);
+        load();
+      } catch (err) {
+        showToast(err.message || 'Action failed', 'error');
+      }
+    }
+
+    load();
+    setInterval(load, 15000);
+  </script>
+</body>
+</html>

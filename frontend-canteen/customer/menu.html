@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Menu — Campus Canteen</title>
+  <link rel="stylesheet" href="../css/main.css">
+  <link rel="stylesheet" href="../css/customer.css">
+</head>
+<body>
+
+  <nav class="navbar">
+    <a class="navbar__brand" href="/customer/menu.html">Campus Canteen</a>
+    <ul class="navbar__nav">
+      <li><a href="/customer/menu.html" class="active">Menu</a></li>
+      <li><a href="/customer/history.html">My Orders</a></li>
+      <li><a href="/customer/wallet.html">Wallet</a></li>
+      <li><a href="/customer/profile.html">Profile</a></li>
+    </ul>
+    <div id="cutoff-banner" class="navbar__order-status hidden">
+      <span id="cutoff-message"></span>
+      <span class="navbar__order-status__sep">·</span>
+      <span id="cutoff-countdown"></span>
+    </div>
+    <div class="navbar__actions">
+      <span class="navbar__user" id="nav-user"></span>
+      <button class="btn btn--secondary btn--sm" onclick="clearSession()">Logout</button>
+    </div>
+  </nav>
+
+  <main class="page">
+
+    <!-- Header: title only -->
+    <div class="menu-page-header">
+      <h1 class="menu-page-title">Order your meal</h1>
+      <p class="menu-page-sub">Fresh campus meals · Pick up when ready</p>
+    </div>
+
+    <!-- Sticky filter bar: search | category tabs -->
+    <div class="menu-filter-bar">
+      <div class="menu-search">
+        <span class="menu-search__icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </span>
+        <input type="text" id="search-input" class="menu-search__input"
+               placeholder="Search items…" autocomplete="off">
+      </div>
+      <div class="menu-filter-bar__sep"></div>
+      <div id="menu-tabs" class="menu-tabs"></div>
+    </div>
+
+    <!-- Two-panel layout: items left, cart sidebar right -->
+    <div class="menu-layout">
+
+      <div class="menu-main">
+        <div id="items-grid" class="items-grid" style="padding-top:.25rem">
+          <div class="spinner"></div>
+        </div>
+      </div>
+
+      <!-- Cart sidebar — desktop only (hidden on mobile via CSS) -->
+      <aside class="cart-sidebar">
+        <div class="cart-sidebar__header">
+          <span class="cart-sidebar__title">Your Order</span>
+          <span class="cart-sidebar__count" id="cart-sidebar-count">0 items</span>
+        </div>
+        <div class="cart-sidebar__body" id="cart-sidebar-body">
+          <div class="cart-empty">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--color-muted)"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+            <span class="cart-empty__text">Your cart is empty</span>
+          </div>
+        </div>
+        <div class="cart-sidebar__footer">
+          <div class="checkout-total mb-2">
+            <span>Total</span>
+            <span id="cart-sidebar-total">HKD 0.00</span>
+          </div>
+          <button class="btn btn--primary btn--block" id="checkout-sidebar-btn" onclick="goCheckout()" disabled>
+            Checkout
+          </button>
+        </div>
+      </aside>
+
+    </div>
+
+  </main>
+
+  <!-- Cart FAB — mobile only (hidden on desktop via CSS) -->
+  <button class="cart-fab" id="cart-fab" onclick="openCart()" aria-label="Open cart">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+    <span class="cart-fab__badge hidden" id="cart-count">0</span>
+  </button>
+
+  <!-- Cart Drawer — mobile only -->
+  <div class="cart-drawer__overlay" id="cart-overlay" onclick="closeCart()"></div>
+  <aside class="cart-drawer" id="cart-drawer">
+    <div class="cart-drawer__header">
+      <span class="cart-drawer__title">Your Cart</span>
+      <button class="cart-drawer__close" onclick="closeCart()">✕</button>
+    </div>
+    <div class="cart-drawer__body" id="cart-body"></div>
+    <div class="cart-drawer__footer">
+      <div class="checkout-total mb-2">
+        <span>Total</span>
+        <span id="cart-total">HKD 0.00</span>
+      </div>
+      <button class="btn btn--primary btn--block btn--lg" id="checkout-btn" onclick="goCheckout()">
+        Proceed to Checkout
+      </button>
+    </div>
+  </aside>
+
+  <!-- Bottom nav -->
+  <nav class="bottom-nav">
+    <a href="/customer/menu.html" class="bottom-nav__item active">
+      <span class="bottom-nav__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg></span><span>Menu</span>
+    </a>
+    <a href="/customer/history.html" class="bottom-nav__item">
+      <span class="bottom-nav__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg></span><span>Orders</span>
+    </a>
+    <a href="/customer/wallet.html" class="bottom-nav__item">
+      <span class="bottom-nav__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M6 7V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2"/><circle cx="17" cy="13" r="1.25" fill="currentColor" stroke="none"/></svg></span><span>Wallet</span>
+    </a>
+    <a href="/customer/profile.html" class="bottom-nav__item">
+      <span class="bottom-nav__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></span><span>Profile</span>
+    </a>
+  </nav>
+
+  <div id="toast-container"></div>
+
+  <script src="../js/auth.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/utils.js"></script>
+  <script>
+    const session = guardPage('CUSTOMER');
+    document.getElementById('nav-user').textContent = session.schoolId;
+
+    let menus = [];
+    let activeMenuId = null;
+    let orderingClosed = false;
+
+    async function loadCutOff() {
+      try {
+        const w = await api.getOrderWindow();
+        if (!w || !w.openTime || !w.closeTime) return;
+        const banner  = document.getElementById('cutoff-banner');
+        const msgEl   = document.getElementById('cutoff-message');
+        const countEl = document.getElementById('cutoff-countdown');
+        const filterBar = document.querySelector('.menu-filter-bar');
+        banner.classList.remove('hidden');
+        if (filterBar) filterBar.classList.remove('no-banner');
+        const toMs = (t) => {
+          const [h, m] = t.split(':').map(Number);
+          const d = new Date();
+          return new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m, 0).getTime();
+        };
+        const openMs  = toMs(w.openTime);
+        const closeMs = toMs(w.closeTime);
+        function tick() {
+          const now = Date.now();
+          if (now < openMs) {
+            if (!orderingClosed) { orderingClosed = true; banner.classList.add('cutoff-banner--closed'); refreshMenu(); syncCheckoutBtns(true); }
+            msgEl.textContent = `⏰ Ordering opens at ${w.openTime.substring(0,5)}`;
+            const diff = openMs - now;
+            countEl.textContent = `opens in ${Math.floor(diff/60000)}m ${Math.floor((diff%60000)/1000)}s`;
+          } else if (now < closeMs) {
+            if (orderingClosed) { orderingClosed = false; banner.classList.remove('cutoff-banner--closed'); refreshMenu(); syncCheckoutBtns(false); }
+            msgEl.textContent = `⏰ Ordering closes at ${w.closeTime.substring(0,5)}`;
+            const diff = closeMs - now;
+            countEl.textContent = `${Math.floor(diff/60000)}m ${Math.floor((diff%60000)/1000)}s remaining`;
+          } else {
+            if (!orderingClosed) { orderingClosed = true; banner.classList.add('cutoff-banner--closed'); refreshMenu(); syncCheckoutBtns(true); }
+            msgEl.textContent = `⏰ Ordering closed`;
+            countEl.textContent = 'Ordering is closed for today';
+          }
+        }
+        tick();
+        setInterval(tick, 1000);
+      } catch {}
+    }
+
+    function syncCheckoutBtns(disabled) {
+      const b1 = document.getElementById('checkout-btn');
+      const b2 = document.getElementById('checkout-sidebar-btn');
+      if (b1) b1.disabled = disabled;
+      if (b2 && cartStore.count()) b2.disabled = disabled;
+    }
+
+    function refreshMenu() {
+      const menu = menus.find(m => (m.menuId || m.id) === activeMenuId);
+      if (menu) renderItems(menu.items || []);
+    }
+
+    async function loadMenus() {
+      try {
+        const data = await api.getMenus();
+        menus = Array.isArray(data) ? data.filter(m => m.isActive !== false) : [];
+        renderTabs();
+        if (menus.length) selectMenu(menus[0].menuId || menus[0].id);
+        else document.getElementById('items-grid').innerHTML =
+          '<div class="empty-state"><div class="empty-state__icon">🍽️</div><div class="empty-state__title">No menus available today</div></div>';
+      } catch (err) {
+        document.getElementById('items-grid').innerHTML =
+          `<div class="empty-state"><div class="empty-state__icon">⚠️</div><div class="empty-state__title">${err.message}</div></div>`;
+      }
+    }
+
+    function renderTabs() {
+      document.getElementById('menu-tabs').innerHTML = menus.map(m => {
+        const id = m.menuId || m.id;
+        const count = (m.items || []).filter(i => i.isVisible !== false).length;
+        return `<button class="menu-tab" data-id="${id}" onclick="selectMenu(${id})">${m.menuName || m.name}<span class="menu-tab__count">(${count})</span></button>`;
+      }).join('');
+    }
+
+    function selectMenu(menuId) {
+      activeMenuId = menuId;
+      document.getElementById('search-input').value = '';
+      document.querySelectorAll('.menu-tab').forEach(t =>
+        t.classList.toggle('active', Number(t.dataset.id) === menuId));
+      const menu = menus.find(m => (m.menuId || m.id) === menuId);
+      renderItems(menu ? (menu.items || []) : []);
+    }
+
+    function itemActionHTML(id, item) {
+      const outOfStock = item.quantity != null && item.quantity === 0;
+      if (orderingClosed) return `<span class="item-card__status-note">Ordering closed</span>`;
+      if (outOfStock)     return `<span class="item-card__status-note">Sold out</span>`;
+      const cartItem = cartStore.get().find(i => i.itemId === id);
+      const cartQty  = cartItem ? cartItem.quantity : 0;
+      if (cartQty > 0) {
+        const stockQty = item.quantity ?? null;
+        const plusDisabled = stockQty != null && cartQty >= stockQty ? ' disabled' : '';
+        return `
+          <div class="item-qty-ctrl">
+            <button class="qty-btn" onclick="itemChangeQty(${id},${cartQty - 1})">−</button>
+            <span class="qty-value">${cartQty}</span>
+            <button class="qty-btn" onclick="itemChangeQty(${id},${cartQty + 1})"${plusDisabled}>+</button>
+          </div>`;
+      }
+      return `<button class="item-add-btn" onclick="addToCart(${id},'${item.name.replace(/'/g,"\\'")}',${item.price})">Add</button>`;
+    }
+
+    function refreshItemActions() {
+      const menu = menus.find(m => (m.menuId || m.id) === activeMenuId);
+      if (!menu) return;
+      (menu.items || []).filter(i => i.isVisible !== false).forEach(item => {
+        const id = item.itemId || item.id;
+        const el = document.getElementById(`item-action-${id}`);
+        if (el) el.innerHTML = itemActionHTML(id, item);
+      });
+    }
+
+    function renderItems(items) {
+      const grid = document.getElementById('items-grid');
+      const visible = items.filter(i => i.isVisible !== false);
+      if (!visible.length) {
+        grid.innerHTML = '<div class="empty-state"><div class="empty-state__title">No items found</div></div>';
+        return;
+      }
+      grid.innerHTML = visible.map(item => {
+        const id = item.itemId || item.id;
+        const imgHTML = item.imageUrl
+          ? `<img class="item-card__img" src="${item.imageUrl}" alt="${item.name}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+          : '';
+        const placeholder = `<div class="item-card__img-placeholder" ${item.imageUrl ? 'style="display:none"' : ''}>🍛</div>`;
+        return `
+          <div class="item-card">
+            <div class="item-card__content">
+              <div class="item-card__name">${item.name}</div>
+              <div class="item-card__price">${formatCurrency(item.price)}</div>
+              <div class="item-card__desc">${item.description || ''}</div>
+              <div class="item-card__action" id="item-action-${id}">${itemActionHTML(id, item)}</div>
+            </div>
+            <div class="item-card__media">
+              ${imgHTML}${placeholder}
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    function getStockQty(itemId) {
+      for (const m of menus) {
+        const item = (m.items || []).find(i => (i.itemId || i.id) === itemId);
+        if (item) return item.quantity ?? null;
+      }
+      return null;
+    }
+
+    function addToCart(itemId, name, price) {
+      if (orderingClosed) { showToast('Ordering is closed for today', 'error'); return; }
+      const stockQty = getStockQty(itemId);
+      if (stockQty != null) {
+        const cartQty = cartStore.get().find(i => i.itemId === itemId)?.quantity || 0;
+        if (cartQty + 1 > stockQty) { showToast(stockQty === 0 ? 'Sold out' : `Only ${stockQty} available`, 'error'); return; }
+      }
+      cartStore.add({ itemId, name, price });
+      updateCartUI();
+      showToast(`${name} added`, 'success');
+    }
+
+    function itemChangeQty(itemId, newQty) {
+      if (newQty > (cartStore.get().find(i => i.itemId === itemId)?.quantity || 0)) {
+        const stockQty = getStockQty(itemId);
+        if (stockQty != null && newQty > stockQty) { showToast(`Only ${stockQty} available`, 'error'); return; }
+      }
+      cartStore.updateQty(itemId, newQty);
+      updateCartUI();
+    }
+
+    function updateCartUI() {
+      const count = cartStore.count();
+      const countEl = document.getElementById('cart-count');
+      countEl.textContent = count;
+      countEl.classList.toggle('hidden', count === 0);
+
+      const sidebarCount = document.getElementById('cart-sidebar-count');
+      if (sidebarCount) sidebarCount.textContent = count === 0 ? '0 items' : `${count} item${count === 1 ? '' : 's'}`;
+
+      renderCartBody();
+      refreshItemActions();
+    }
+
+    function renderCartBody() {
+      const items       = cartStore.get();
+      const drawerBody  = document.getElementById('cart-body');
+      const sidebarBody = document.getElementById('cart-sidebar-body');
+      const checkoutBtn = document.getElementById('checkout-btn');
+      const sidebarBtn  = document.getElementById('checkout-sidebar-btn');
+      const totalEl     = document.getElementById('cart-total');
+      const sidebarTot  = document.getElementById('cart-sidebar-total');
+
+      if (!items.length) {
+        const empty = '<div class="cart-empty"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--color-muted)"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg><span class="cart-empty__text">Your cart is empty</span></div>';
+        if (drawerBody)  drawerBody.innerHTML  = empty;
+        if (sidebarBody) sidebarBody.innerHTML = empty;
+        if (checkoutBtn) checkoutBtn.disabled  = true;
+        if (sidebarBtn)  sidebarBtn.disabled   = true;
+        if (totalEl)     totalEl.textContent   = 'HKD 0.00';
+        if (sidebarTot)  sidebarTot.textContent = 'HKD 0.00';
+        return;
+      }
+
+      const itemsHTML = items.map(i => {
+        const stockQty = getStockQty(i.itemId);
+        const plusDisabled = stockQty != null && i.quantity >= stockQty ? ' disabled' : '';
+        return `
+          <div class="cart-item">
+            <div class="cart-item__top">
+              <span class="cart-item__name">${i.name}</span>
+              <span class="cart-item__subtotal">${formatCurrency(i.price * i.quantity)}</span>
+            </div>
+            <span class="cart-item__price">${formatCurrency(i.price)} each</span>
+            <div class="cart-item__controls">
+              <button class="qty-btn" onclick="changeQty(${i.itemId},${i.quantity-1})">−</button>
+              <span class="qty-value">${i.quantity}</span>
+              <button class="qty-btn" onclick="changeQty(${i.itemId},${i.quantity+1})"${plusDisabled}>+</button>
+            </div>
+          </div>`;
+      }).join('');
+
+      if (drawerBody)  drawerBody.innerHTML  = itemsHTML;
+      if (sidebarBody) sidebarBody.innerHTML = itemsHTML;
+
+      const total = formatCurrency(cartStore.total());
+      if (totalEl)    totalEl.textContent    = total;
+      if (sidebarTot) sidebarTot.textContent = total;
+
+      if (checkoutBtn) checkoutBtn.disabled = orderingClosed;
+      if (sidebarBtn)  sidebarBtn.disabled  = orderingClosed;
+    }
+
+    function changeQty(itemId, qty) {
+      if (qty > (cartStore.get().find(i => i.itemId === itemId)?.quantity || 0)) {
+        const stockQty = getStockQty(itemId);
+        if (stockQty != null && qty > stockQty) { showToast(`Only ${stockQty} available`, 'error'); return; }
+      }
+      cartStore.updateQty(itemId, qty);
+      updateCartUI();
+    }
+
+    function openCart()  { document.getElementById('cart-drawer').classList.add('open'); document.getElementById('cart-overlay').classList.add('open'); }
+    function closeCart() { document.getElementById('cart-drawer').classList.remove('open'); document.getElementById('cart-overlay').classList.remove('open'); }
+    function goCheckout() {
+      if (orderingClosed) { showToast('Ordering is closed for today', 'error'); return; }
+      if (!cartStore.count()) return;
+      location.href = '/customer/checkout.html';
+    }
+
+    document.getElementById('search-input').addEventListener('input', function () {
+      const q = this.value.toLowerCase().trim();
+      const menu = menus.find(m => (m.menuId || m.id) === activeMenuId);
+      if (!menu) return;
+      renderItems(q
+        ? (menu.items||[]).filter(i => i.name.toLowerCase().includes(q) || (i.description||'').toLowerCase().includes(q))
+        : (menu.items||[]));
+    });
+
+    loadCutOff();
+    loadMenus();
+    updateCartUI();
+  </script>
+</body>
+</html>

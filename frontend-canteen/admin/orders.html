@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Orders — Admin</title>
+  <link rel="stylesheet" href="../css/main.css">
+  <link rel="stylesheet" href="../css/admin.css">
+  <style>
+    .status-badge {
+      display: inline-block;
+      padding: .2rem .55rem;
+      border-radius: 999px;
+      font-size: .75rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .status-ORDERED        { background:#dbeafe; color:#1d4ed8; }
+    .status-PREPARING      { background:#fef9c3; color:#92400e; }
+    .status-READY_FOR_PICK_UP { background:#d1fae5; color:#065f46; }
+    .status-PICKED_UP      { background:#dcfce7; color:#166534; }
+    .status-CANCELLED      { background:#fee2e2; color:#991b1b; }
+    .status-ABANDONED      { background:#f3f4f6; color:#6b7280; }
+    .status-REJECTED       { background:#fce7f3; color:#9d174d; }
+
+    .filter-bar {
+      display: flex;
+      gap: .75rem;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 1.25rem;
+    }
+    .filter-bar select, .filter-bar input {
+      padding: .4rem .7rem;
+      border: 1px solid var(--color-border, #e5e7eb);
+      border-radius: .375rem;
+      font-size: .875rem;
+      background: #fff;
+    }
+    .filter-bar label { font-size: .875rem; color: var(--color-text-muted); }
+
+    .status-select {
+      padding: .3rem .6rem;
+      border: 1px solid #d1d5db;
+      border-radius: .375rem;
+      font-size: .8rem;
+      cursor: pointer;
+    }
+    td { vertical-align: middle; }
+    .items-list { font-size: .8rem; color: var(--color-text-muted); }
+
+    .status-summary {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: .5rem;
+      margin-bottom: 1.25rem;
+    }
+    .status-tile {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-left-width: 3px;
+      border-radius: 8px;
+      padding: .65rem .85rem;
+      cursor: pointer;
+      user-select: none;
+      transition: box-shadow .15s, background .15s;
+    }
+    .status-tile:hover { box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+    .status-tile.active { background: #f8faff; box-shadow: 0 2px 10px rgba(0,0,0,.1); }
+    .status-tile__label {
+      font-size: .7rem;
+      font-weight: 600;
+      color: #6b7280;
+      margin-bottom: .3rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .status-tile__count {
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: -.04em;
+      color: #111827;
+      line-height: 1;
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <a class="navbar__brand" href="/admin/dashboard.html">Canteen Admin</a>
+    <div class="navbar__actions">
+      <span class="navbar__user" id="nav-user"></span>
+      <button class="btn btn--secondary btn--sm" onclick="clearSession()">Logout</button>
+    </div>
+  </nav>
+
+  <div class="admin-layout">
+    <nav class="admin-sidebar">
+      <div class="admin-sidebar__section">Management</div>
+      <ul class="admin-sidebar__nav" id="admin-nav">
+        <li><a href="/admin/dashboard.html">📊 Dashboard</a></li>
+        <li><a href="/admin/menus.html">📋 Menus</a></li>
+        <li><a href="/admin/items.html">🍛 Items</a></li>
+        <li><a href="/admin/orders.html" class="active">📦 Orders</a></li>
+        <li><a href="/admin/logs.html">📝 Status Logs</a></li>
+        <li><a href="/admin/settings.html">⚙️ Settings</a></li>
+      </ul>
+    </nav>
+
+    <div class="admin-content">
+      <div class="page-header">
+        <h1 class="page-title" style="margin:0">All Orders</h1>
+        <button class="btn btn--secondary" onclick="load()">↻ Refresh</button>
+      </div>
+
+      <div class="status-summary" id="status-summary"></div>
+
+      <div class="filter-bar">
+        <label>Status:</label>
+        <select id="filter-status" onchange="render()">
+          <option value="">All</option>
+          <option value="ORDERED">Ordered</option>
+          <option value="PREPARING">Preparing</option>
+          <option value="READY_FOR_PICK_UP">Ready for Pick Up</option>
+          <option value="PICKED_UP">Picked Up</option>
+          <option value="CANCELLED">Cancelled</option>
+          <option value="ABANDONED">Abandoned</option>
+          <option value="REJECTED">Rejected</option>
+        </select>
+        <label>Payment:</label>
+        <select id="filter-payment" onchange="render()">
+          <option value="">All</option>
+          <option value="WALLET">Wallet</option>
+          <option value="CASH">Cash</option>
+          <option value="CREDIT_CARD">Credit Card</option>
+        </select>
+        <label>Search:</label>
+        <input type="text" id="filter-search" placeholder="Customer name, School ID or Order ID" oninput="render()" style="min-width:200px">
+      </div>
+
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Order ID</th>
+                <th>School / Staff ID</th>
+                <th>Customer</th>
+                <th>Time</th>
+                <th>Items</th>
+                <th>Total</th>
+                <th>Payment</th>
+                <th>Status</th>
+                <th>Change Status</th>
+                <th>Remark</th>
+              </tr>
+            </thead>
+            <tbody id="orders-body">
+              <tr><td colspan="10"><div class="spinner"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/auth.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/utils.js"></script>
+  <script>
+    const session = guardPage(['ADMIN', 'KITCHEN']);
+    document.getElementById('admin-nav').innerHTML = buildAdminSidebar('/admin/orders.html');
+    document.getElementById('nav-user').textContent = session.schoolId;
+
+    const ALL_STATUSES = [
+      'ORDERED', 'PREPARING', 'READY_FOR_PICK_UP', 'PICKED_UP',
+      'CANCELLED', 'ABANDONED', 'REJECTED'
+    ];
+    const STATUS_LABEL = {
+      ORDERED: 'Ordered',
+      PREPARING: 'Preparing',
+      READY_FOR_PICK_UP: 'Ready for Pick Up',
+      PICKED_UP: 'Picked Up',
+      CANCELLED: 'Cancelled',
+      ABANDONED: 'Abandoned',
+      REJECTED: 'Rejected',
+    };
+    const STATUS_COLOR = {
+      ORDERED:            'background:#dbeafe;color:#1d4ed8',
+      PREPARING:          'background:#fef9c3;color:#92400e',
+      READY_FOR_PICK_UP:  'background:#d1fae5;color:#065f46',
+      PICKED_UP:          'background:#dcfce7;color:#166534',
+      CANCELLED:          'background:#fee2e2;color:#991b1b',
+      ABANDONED:          'background:#f3f4f6;color:#6b7280',
+      REJECTED:           'background:#fce7f3;color:#9d174d',
+    };
+
+    let allOrders = [];
+
+    const STATUS_BORDER = {
+      ORDERED:           '#2563eb',
+      PREPARING:         '#d97706',
+      READY_FOR_PICK_UP: '#059669',
+      PICKED_UP:         '#16a34a',
+      CANCELLED:         '#dc2626',
+      ABANDONED:         '#9ca3af',
+      REJECTED:          '#db2777',
+    };
+
+    function renderSummary() {
+      const counts = {};
+      ALL_STATUSES.forEach(s => counts[s] = 0);
+      allOrders.forEach(o => { if (counts[o.orderStatus] !== undefined) counts[o.orderStatus]++; });
+      const activeFilter = document.getElementById('filter-status').value;
+      document.getElementById('status-summary').innerHTML = ALL_STATUSES.map(s => `
+        <div class="status-tile ${activeFilter === s ? 'active' : ''}"
+             style="border-left-color:${STATUS_BORDER[s]}"
+             onclick="filterByStatus('${s}')">
+          <div class="status-tile__label">${STATUS_LABEL[s]}</div>
+          <div class="status-tile__count">${counts[s]}</div>
+        </div>`).join('');
+    }
+
+    function filterByStatus(status) {
+      const sel = document.getElementById('filter-status');
+      sel.value = sel.value === status ? '' : status;
+      render();
+    }
+
+    async function load() {
+      document.getElementById('orders-body').innerHTML =
+        '<tr><td colspan="10"><div class="spinner"></div></td></tr>';
+      try {
+        allOrders = await api.getAllOrders();
+        renderSummary();
+        render();
+      } catch (err) {
+        document.getElementById('orders-body').innerHTML =
+          `<tr><td colspan="10" class="text-muted">${err.message}</td></tr>`;
+      }
+    }
+
+    function render() {
+      renderSummary();
+      const filterStatus  = document.getElementById('filter-status').value;
+      const filterPayment = document.getElementById('filter-payment').value;
+      const filterSearch  = document.getElementById('filter-search').value.trim().toLowerCase();
+
+      const filtered = allOrders.filter(o => {
+        if (filterStatus  && o.orderStatus  !== filterStatus)  return false;
+        if (filterPayment && o.paymentMethod !== filterPayment) return false;
+        if (filterSearch) {
+          const name     = (o.customerName || '').toLowerCase();
+          const schoolId = (o.schoolId     || '').toLowerCase();
+          const id       = String(o.orderId);
+          if (!name.includes(filterSearch) && !id.includes(filterSearch) && !schoolId.includes(filterSearch)) return false;
+        }
+        return true;
+      });
+
+      const tbody = document.getElementById('orders-body');
+      if (!filtered.length) {
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted">No orders found</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(o => {
+        const itemList = (o.orderedItems || [])
+          .map(i => `${i.name} ×${i.quantity}`)
+          .join(', ');
+        const time = formatDate(o.orderTime);
+        const options = ALL_STATUSES
+          .map(s => `<option value="${s}" ${s === o.orderStatus ? 'selected' : ''}>${STATUS_LABEL[s]}</option>`)
+          .join('');
+        return `
+          <tr id="row-${o.orderId}">
+            <td><strong>#${o.orderId}</strong></td>
+            <td style="font-family:monospace;font-size:.82rem">${o.schoolId || '—'}</td>
+            <td>${o.customerName || '—'}</td>
+            <td style="white-space:nowrap">${time}</td>
+            <td><span class="items-list">${itemList || '—'}</span></td>
+            <td>${formatCurrency(o.totalAmount)}</td>
+            <td>${o.paymentMethod || '—'}</td>
+            <td><span class="status-badge status-${o.orderStatus}">${STATUS_LABEL[o.orderStatus] || o.orderStatus}</span></td>
+            <td>
+              <select class="status-select" onchange="changeStatus(${o.orderId}, this)">
+                ${options}
+              </select>
+            </td>
+            <td style="font-size:.82rem;color:var(--color-text-muted)">${o.remark || '—'}</td>
+          </tr>`;
+      }).join('');
+    }
+
+    async function changeStatus(orderId, selectEl) {
+      const newStatus = selectEl.value;
+      const originalValue = selectEl.dataset.original || selectEl.value;
+      selectEl.dataset.original = selectEl.value;
+      selectEl.disabled = true;
+      try {
+        await api.adminSetStatus(orderId, newStatus, session.id);
+        const order = allOrders.find(o => o.orderId === orderId);
+        if (order) order.orderStatus = newStatus;
+        renderSummary();
+        const badge = document.querySelector(`#row-${orderId} .status-badge`);
+        if (badge) {
+          badge.className = `status-badge status-${newStatus}`;
+          badge.textContent = STATUS_LABEL[newStatus] || newStatus;
+        }
+        showToast(`Order #${orderId} → ${STATUS_LABEL[newStatus]}`, 'success');
+      } catch (err) {
+        showToast(err.message || 'Failed to update status', 'error');
+        selectEl.value = originalValue;
+      } finally {
+        selectEl.disabled = false;
+      }
+    }
+
+    load();
+  </script>
+</body>
+</html>

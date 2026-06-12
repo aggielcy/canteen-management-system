@@ -1,0 +1,120 @@
+/* ── Admin sidebar layout ───────────────────────────────────────────────── */
+.admin-layout {
+  display: flex;
+  min-height: calc(100vh - var(--navbar-h));
+  background: #f0f2f6;
+}
+
+.admin-sidebar {
+  width: 240px; flex-shrink: 0;
+  background: #1a2035;
+  padding: 1.5rem 0;
+  display: flex; flex-direction: column;
+}
+.admin-sidebar__section {
+  font-size: .68rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .1em; color: #4a5c72;
+  padding: 1.25rem 1.5rem .4rem;
+}
+.admin-sidebar__section:first-child { padding-top: .25rem; }
+.admin-sidebar__nav { list-style: none; }
+.admin-sidebar__nav a {
+  display: flex; align-items: center; gap: .65rem;
+  padding: .65rem 1.5rem;
+  color: #8899b0; font-size: .875rem;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+  border-left: 3px solid transparent;
+  text-decoration: none;
+}
+.admin-sidebar__nav a:hover {
+  background: rgba(255,255,255,.05);
+  color: #c8d3e8;
+  text-decoration: none;
+}
+.admin-sidebar__nav a.active {
+  background: rgba(255,255,255,.08);
+  color: #fff;
+  border-left-color: #4ecdc4;
+  font-weight: 600;
+}
+
+.admin-content { flex: 1; padding: 1.75rem 2rem; min-width: 0; }
+
+/* ── Slide-in drawer (create/edit form) ─────────────────────────────────── */
+.side-drawer {
+  position: fixed; top: 0; right: 0; z-index: 150;
+  width: 420px; max-width: 100vw;
+  height: 100vh; overflow-y: auto;
+  background: var(--color-surface);
+  box-shadow: -4px 0 20px rgba(0,0,0,.15);
+  padding: 1.5rem;
+  transform: translateX(100%);
+  transition: transform .25s ease;
+}
+.side-drawer.open { transform: none; }
+.side-drawer__overlay {
+  position: fixed; inset: 0; z-index: 140;
+  background: rgba(0,0,0,.3);
+  display: none;
+}
+.side-drawer__overlay.open { display: block; }
+.side-drawer__header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+.side-drawer__title { font-weight: 700; font-size: 1.05rem; }
+.side-drawer__close {
+  background: none; border: none; font-size: 1.3rem;
+  cursor: pointer; color: var(--color-muted);
+}
+
+/* ── Items/menus toggle switch ──────────────────────────────────────────── */
+.toggle-switch {
+  position: relative; display: inline-flex; align-items: center;
+  width: 40px; height: 22px; cursor: pointer;
+}
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-switch__track {
+  position: absolute; inset: 0;
+  background: var(--color-border); border-radius: 999px;
+  transition: background var(--transition);
+}
+.toggle-switch input:checked + .toggle-switch__track { background: var(--color-success); }
+.toggle-switch__thumb {
+  position: absolute; left: 3px; top: 3px;
+  width: 16px; height: 16px;
+  background: #fff; border-radius: 50%;
+  transition: transform var(--transition);
+  pointer-events: none;
+}
+.toggle-switch input:checked ~ .toggle-switch__thumb { transform: translateX(18px); }
+
+/* ── Settings card ──────────────────────────────────────────────────────── */
+.settings-card { max-width: 420px; }
+.settings-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.settings-row:last-child { border-bottom: none; }
+.settings-row__label { font-weight: 600; font-size: .92rem; }
+.settings-row__sub { font-size: .8rem; color: var(--color-muted); }
+
+/* ── Menu items tag list (link items to menu) ───────────────────────────── */
+.tag-list { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .35rem; }
+.tag {
+  display: inline-flex; align-items: center; gap: .3rem;
+  background: var(--color-bg); border: 1px solid var(--color-border);
+  border-radius: 999px; padding: .2rem .65rem;
+  font-size: .78rem;
+}
+.tag__remove {
+  background: none; border: none; cursor: pointer;
+  color: var(--color-muted); font-size: .85rem; line-height: 1;
+}
+.tag__remove:hover { color: var(--color-danger); }
+
+@media (max-width: 900px) {
+  .admin-sidebar { display: none; }
+  .admin-content { padding: 1.25rem 1rem; }
+}
