@@ -1,4 +1,4 @@
-const BASE_URL = 'canteen-management-system-production-f6cd.up.railway.app';
+const BASE_URL = 'https://canteen-management-system-production-f6cd.up.railway.app';
  
 async function _req(method, path, body) {
   const opts = {
