@@ -5,6 +5,7 @@ spring.datasource:
   password: "${DB_PASSWORD}"
 
 spring.jpa:
+  database-platform: org.hibernate.dialect.PostgreSQLDialect
   show-sql: false
   hibernate.ddl-auto: update
   properties:
@@ -13,4 +14,4 @@ spring.jpa:
         time_zone: Asia/Hong_Kong
 
 server:
-  port: ${PORT:8080}
+  port: ${PORT:8080} 
