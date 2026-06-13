@@ -1,5 +1,5 @@
-const BASE_URL = 'http://localhost:8080';
-
+const BASE_URL = 'canteen-management-system-production-f6cd.up.railway.app';
+ 
 async function _req(method, path, body) {
   const opts = {
     method,
